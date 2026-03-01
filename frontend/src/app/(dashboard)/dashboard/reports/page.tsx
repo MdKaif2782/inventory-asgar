@@ -734,6 +734,7 @@ export default function ReportsPage() {
           <TabsTrigger value="sales">Sales Table</TabsTrigger>
           <TabsTrigger value="purchases">Purchase Table</TabsTrigger>
           <TabsTrigger value="stock">Stock Table</TabsTrigger>
+          <TabsTrigger value="profitability">Product Profitability</TabsTrigger>
         </TabsList>
 
         {/* Sales Table */}
@@ -910,6 +911,64 @@ export default function ReportsPage() {
                   {stockDistribution.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={3} className="text-center text-muted-foreground py-8">No stock data</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Product Profitability Table */}
+        <TabsContent value="profitability">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-emerald-600" />
+                Product Profitability Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">COGS</TableHead>
+                    <TableHead className="text-right">Profit</TableHead>
+                    <TableHead className="text-right">Margin %</TableHead>
+                    <TableHead className="text-right">Qty Sold</TableHead>
+                    <TableHead className="text-right">Avg Sale Price</TableHead>
+                    <TableHead className="text-right">Avg Cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productProfitability.map((item) => (
+                    <TableRow key={item.product.id}>
+                      <TableCell className="font-medium">{item.product.name}</TableCell>
+                      <TableCell className="text-right text-blue-600">{formatBDT(item.totalRevenue)}</TableCell>
+                      <TableCell className="text-right text-purple-600">{formatBDT(item.totalCogs)}</TableCell>
+                      <TableCell className={`text-right font-bold ${item.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {formatBDT(item.profit)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge 
+                          variant={item.marginPercent >= 20 ? 'default' : item.marginPercent >= 0 ? 'secondary' : 'destructive'}
+                          className={item.marginPercent >= 20 ? 'bg-emerald-100 text-emerald-700' : ''}
+                        >
+                          {item.marginPercent.toFixed(1)}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{item.qtySold.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{formatBDT(item.avgSellingPrice)}</TableCell>
+                      <TableCell className="text-right">{formatBDT(item.avgCostPrice)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {productProfitability.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        No profitability data available. Make sure you have both sales and purchase records.
+                      </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
