@@ -4,12 +4,27 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import type { User, Role } from '@/lib/types';
 import PermissionGate from '@/components/PermissionGate';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Pencil, Trash2, Users, Mail } from 'lucide-react';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', email: '', password: '', roleId: '' });
   const [error, setError] = useState('');
@@ -26,7 +41,15 @@ export default function UsersPage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const resetForm = () => {
+    setForm({ name: '', email: '', password: '', roleId: '' });
+    setEditingId(null);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,19 +62,19 @@ export default function UsersPage() {
       } else {
         await api.post('/users', form);
       }
-      setShowForm(false);
-      setEditingId(null);
-      setForm({ name: '', email: '', password: '', roleId: '' });
+      setDialogOpen(false);
+      resetForm();
       fetchData();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Operation failed');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Operation failed');
     }
   };
 
   const startEdit = (user: User) => {
     setForm({ name: user.name, email: user.email, password: '', roleId: user.roleId });
     setEditingId(user.id);
-    setShowForm(true);
+    setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -59,80 +82,161 @@ export default function UsersPage() {
     try {
       await api.delete(`/users/${id}`);
       fetchData();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Delete failed');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || 'Delete failed');
     }
   };
 
-  if (loading) return <div className="text-gray-500">Loading users...</div>;
+  if (loading) {
+    return <div className="text-muted-foreground">Loading users...</div>;
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Users</h1>
+          <p className="text-sm text-muted-foreground">Manage system users and access</p>
+        </div>
         <PermissionGate permission="users.create">
-          <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', email: '', password: '', roleId: '' }); }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-            + Add User
-          </button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? 'Edit User' : 'Create User'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">
+                    {editingId ? 'New Password' : 'Password *'}
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder={editingId ? 'Leave blank to keep current' : 'Enter password'}
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    required={!editingId}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Role *</Label>
+                  <Select value={form.roleId} onValueChange={(v) => setForm({ ...form, roleId: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">{editingId ? 'Update' : 'Create'}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </PermissionGate>
       </div>
 
-      {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">{editingId ? 'Edit User' : 'Create User'}</h2>
-          {error && <div className="bg-red-50 text-red-700 px-4 py-2 rounded mb-4 text-sm">{error}</div>}
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input placeholder="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="px-3 py-2 border rounded-lg" />
-            <input type="email" placeholder="Email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="px-3 py-2 border rounded-lg" />
-            <input type="password" placeholder={editingId ? 'New Password (leave blank to keep)' : 'Password'} required={!editingId} value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })} className="px-3 py-2 border rounded-lg" />
-            <select required value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">Select Role</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
-            <div className="flex gap-2 md:col-span-2">
-              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">{editingId ? 'Update' : 'Create'}</button>
-              <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{u.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
-                <td className="px-6 py-4"><span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">{u.role?.name}</span></td>
-                <td className="px-6 py-4 text-sm text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <PermissionGate permission="users.update">
-                    <button onClick={() => startEdit(u)} className="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
-                  </PermissionGate>
-                  <PermissionGate permission="users.delete">
-                    <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                  </PermissionGate>
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No users found</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            All Users
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">{u.name}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Mail className="h-3 w-3" />
+                      {u.email}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{u.role?.name}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(u.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <PermissionGate permission="users.update">
+                        <Button variant="ghost" size="sm" onClick={() => startEdit(u)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </PermissionGate>
+                      <PermissionGate permission="users.delete">
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(u.id)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </PermissionGate>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {users.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

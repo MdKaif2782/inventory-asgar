@@ -52,6 +52,10 @@ export class CreatePurchaseDto {
   @IsNotEmpty()
   companyName: string;
 
+  @IsString()
+  @IsNotEmpty()
+  gpNo: string;
+
   @IsDateString()
   date: string;
 }

@@ -56,6 +56,7 @@ export interface Purchase {
   unitPrice: number;
   totalAmount: number;
   companyName: string;
+  gpNo: string;
   date: string;
   createdById: string;
   createdAt: string;

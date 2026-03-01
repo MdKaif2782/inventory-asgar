@@ -4,11 +4,23 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import type { Godown } from '@/lib/types';
 import PermissionGate from '@/components/PermissionGate';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Pencil, Trash2, Warehouse, MapPin } from 'lucide-react';
 
 export default function GodownsPage() {
   const [godowns, setGodowns] = useState<Godown[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', location: '' });
   const [error, setError] = useState('');
@@ -28,6 +40,12 @@ export default function GodownsPage() {
     fetchGodowns();
   }, []);
 
+  const resetForm = () => {
+    setForm({ name: '', location: '' });
+    setEditingId(null);
+    setError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -37,19 +55,19 @@ export default function GodownsPage() {
       } else {
         await api.post('/godowns', form);
       }
-      setShowForm(false);
-      setEditingId(null);
-      setForm({ name: '', location: '' });
+      setDialogOpen(false);
+      resetForm();
       fetchGodowns();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Operation failed');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Operation failed');
     }
   };
 
   const handleEdit = (godown: Godown) => {
     setForm({ name: godown.name, location: godown.location || '' });
     setEditingId(godown.id);
-    setShowForm(true);
+    setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -57,93 +75,135 @@ export default function GodownsPage() {
     try {
       await api.delete(`/godowns/${id}`);
       fetchGodowns();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Delete failed');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || 'Delete failed');
     }
   };
 
-  if (loading) return <div className="text-gray-500">Loading godowns...</div>;
+  if (loading) {
+    return <div className="text-muted-foreground">Loading godowns...</div>;
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Godowns</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Godowns</h1>
+          <p className="text-sm text-muted-foreground">Manage warehouse locations</p>
+        </div>
         <PermissionGate permission="godowns.create">
-          <button
-            onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', location: '' }); }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-          >
-            + Add Godown
-          </button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Godown
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? 'Edit' : 'Add'} Godown</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="bg-destructive/10 text-destructive px-3 py-2 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Godown Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Main Warehouse"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="Dhaka, Bangladesh"
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">{editingId ? 'Update' : 'Create'}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </PermissionGate>
       </div>
 
-      {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">{editingId ? 'Edit' : 'Add'} Godown</h2>
-          {error && <div className="bg-red-50 text-red-700 px-4 py-2 rounded mb-4 text-sm">{error}</div>}
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              placeholder="Godown Name"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <input
-              placeholder="Location (optional)"
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                {editingId ? 'Update' : 'Create'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products in Stock</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {godowns.map((godown) => (
-              <tr key={godown.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{godown.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{godown.location || '-'}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{godown.stocks?.length ?? 0}</td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <PermissionGate permission="godowns.update">
-                    <button onClick={() => handleEdit(godown)} className="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
-                  </PermissionGate>
-                  <PermissionGate permission="godowns.delete">
-                    <button onClick={() => handleDelete(godown.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
-                  </PermissionGate>
-                </td>
-              </tr>
-            ))}
-            {godowns.length === 0 && (
-              <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">No godowns found</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Warehouse className="h-5 w-5" />
+            All Godowns
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead className="text-center">Products in Stock</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {godowns.map((godown) => (
+                <TableRow key={godown.id}>
+                  <TableCell className="font-medium">{godown.name}</TableCell>
+                  <TableCell>
+                    {godown.location ? (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        {godown.location}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary">
+                      {godown.stocks?.length ?? 0} items
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <PermissionGate permission="godowns.update">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(godown)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </PermissionGate>
+                      <PermissionGate permission="godowns.delete">
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(godown.id)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </PermissionGate>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {godowns.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    No godowns found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

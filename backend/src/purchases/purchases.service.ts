@@ -58,6 +58,7 @@ export class PurchasesService {
           unitPrice: dto.unitPrice,
           totalAmount: totalAmount,
           companyName: dto.companyName,
+          gpNo: dto.gpNo,
           date: new Date(dto.date),
           createdById: userId,
         },
