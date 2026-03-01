@@ -11,10 +11,25 @@ async function bootstrap() {
   app.use(helmet());
   app.use(cookieParser());
 
-  // CORS
+  // CORS - Allow multiple origins
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://inventory-asgar.vercel.app',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   });
 
   // Global prefix
