@@ -15,6 +15,7 @@ async function bootstrap() {
   const allowedOrigins = [
     'http://localhost:3000',
     'https://inventory-asgar.vercel.app',
+    'https://asgar.inovate.it.com',
     process.env.FRONTEND_URL,
   ].filter(Boolean);
 
@@ -29,7 +30,12 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+    ],
   });
 
   // Global prefix
